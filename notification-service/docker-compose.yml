@@ -1,0 +1,61 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: queueone
+      POSTGRES_PASSWORD: queueone
+      POSTGRES_DB: queueone
+    ports:
+      - "5432:5432"
+    volumes:
+      - queueone_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ../backend
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://queueone:queueone@postgres:5432/queueone?schema=public
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: http://localhost:3000,http://localhost:3001
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+
+  frontend:
+    build: ../frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  admin-panel:
+    build: ../admin-panel
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+
+  notification-service:
+    build: .
+    environment:
+      PORT: 5001
+    ports:
+      - "5001:5001"
+
+volumes:
+  queueone_pg:

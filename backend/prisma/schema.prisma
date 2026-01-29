@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum QueueStatus {
+  OPEN
+  CLOSED
+}
+
+enum TokenStatus {
+  WAITING
+  SERVING
+  SKIPPED
+  SERVED
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  type      String
+  createdAt DateTime @default(now())
+
+  queues    Queue[]
+}
+
+model Doctor {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?  @unique
+  mobile    String?  @unique
+  createdAt DateTime @default(now())
+
+  queues    Queue[]
+}
+
+model Queue {
+  id              String      @id @default(uuid())
+  locationId      String
+  doctorId        String?
+  name            String
+  publicId        String      @unique
+  tokenPrefix     String
+  currentSequence Int         @default(0)
+  status          QueueStatus @default(OPEN)
+  createdAt       DateTime    @default(now())
+
+  location        Location    @relation(fields: [locationId], references: [id])
+  doctor          Doctor?     @relation(fields: [doctorId], references: [id])
+  tokens          Token[]
+
+  @@index([locationId])
+  @@index([doctorId])
+}
+
+model Token {
+  id          String      @id @default(uuid())
+  queueId     String
+  tokenNumber String
+  sequence    Int
+  patientName String?
+  mobile      String?
+  status      TokenStatus @default(WAITING)
+  createdAt   DateTime    @default(now())
+  servedAt    DateTime?
+
+  queue       Queue       @relation(fields: [queueId], references: [id])
+
+  @@index([queueId])
+  @@index([status])
+  @@unique([queueId, sequence])
+}
