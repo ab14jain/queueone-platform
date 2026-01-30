@@ -1,5 +1,25 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
+// Helper to get auth token
+const getAuthToken = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('authToken');
+  }
+  return null;
+};
+
+// Helper to create headers with auth
+const getHeaders = (): HeadersInit => {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  const token = getAuthToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 export type QueueResponse = {
   queue: {
     id: string;
@@ -23,7 +43,10 @@ export const fetchQueue = async (publicId: string): Promise<QueueResponse> => {
 };
 
 export const callNext = async (queueId: string) => {
-  const response = await fetch(`${API_BASE}/queues/${queueId}/next`, { method: "POST" });
+  const response = await fetch(`${API_BASE}/queues/${queueId}/next`, { 
+    method: "POST",
+    headers: getHeaders(),
+  });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new Error(data?.message || "Unable to call next token");
@@ -32,7 +55,10 @@ export const callNext = async (queueId: string) => {
 };
 
 export const skipCurrent = async (queueId: string) => {
-  const response = await fetch(`${API_BASE}/queues/${queueId}/skip`, { method: "POST" });
+  const response = await fetch(`${API_BASE}/queues/${queueId}/skip`, { 
+    method: "POST",
+    headers: getHeaders(),
+  });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new Error(data?.message || "Unable to skip token");
@@ -41,10 +67,29 @@ export const skipCurrent = async (queueId: string) => {
 };
 
 export const setQueueStatus = async (queueId: string, status: "open" | "close") => {
-  const response = await fetch(`${API_BASE}/queues/${queueId}/${status}`, { method: "POST" });
+  const response = await fetch(`${API_BASE}/queues/${queueId}/${status}`, { 
+    method: "POST",
+    headers: getHeaders(),
+  });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new Error(data?.message || "Unable to update queue");
   }
   return response.json();
 };
+
+// Export axios with configured headers for other services
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: API_BASE,
+});
+
+// Add auth token to axios requests
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});

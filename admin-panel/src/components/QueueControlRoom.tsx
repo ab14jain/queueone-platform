@@ -1,8 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Chip,
+  Container,
+  Grid,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+  CircularProgress,
+  Alert,
+} from "@mui/material";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import SkipNextIcon from "@mui/icons-material/SkipNext";
+import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import { callNext, fetchQueue, QueueResponse, setQueueStatus, skipCurrent } from "../services/api";
 import { createQueueSocket } from "../services/socket";
 
-export default function QueueControlComponent() {
+export default function QueueControlRoom() {
   const [publicId, setPublicId] = useState("");
   const [queue, setQueue] = useState<QueueResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,57 +96,122 @@ export default function QueueControlComponent() {
   };
 
   return (
-    <div className="container">
-      <div className="card">
-        <div className="badge">QueueOne Admin</div>
-        <h1>Queue Control Room</h1>
-        <div className="grid">
-          <input
-            className="input"
-            placeholder="Enter queue public ID"
-            value={publicId}
-            onChange={(event) => setPublicId(event.target.value)}
-          />
-          <button className="button" onClick={loadQueue} disabled={loading}>
-            {loading ? "Loading..." : "Load Queue"}
-          </button>
-        </div>
-        {error ? <p className="small">{error}</p> : null}
-      </div>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Card sx={{ mb: 3, boxShadow: 2 }}>
+        <CardHeader title="Queue Control Room" subheader="Manage live queue operations" />
+        <CardContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+              fullWidth
+              label="Queue Public ID"
+              placeholder="Enter queue public ID"
+              value={publicId}
+              onChange={(event) => setPublicId(event.target.value)}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={loadQueue}
+              disabled={loading}
+              sx={{ minWidth: 140 }}
+            >
+              {loading ? <CircularProgress size={22} /> : "Load Queue"}
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {queue ? (
         <>
-          <div className="card">
-            <h2>{queue.queue.name}</h2>
-            <p className="small">{queue.queue.location.name}</p>
-            <div className="grid">
-              <div>
-                <div className="small">Now Serving</div>
-                <div className="highlight">{queue.nowServing || "—"}</div>
-              </div>
-              <div>
-                <div className="small">Waiting</div>
-                <div className="badge">{queue.waitingCount} people</div>
-              </div>
-              <div>
-                <div className="small">Status</div>
-                <div className="badge">{queue.queue.status}</div>
-              </div>
-            </div>
-          </div>
-          <div className="card grid">
-            <button className="button" onClick={handleNext}>
-              Call Next Token
-            </button>
-            <button className="button" onClick={handleSkip}>
-              Skip Current Token
-            </button>
-            <button className="button" onClick={handleToggleStatus}>
-              {queue.queue.status === "OPEN" ? "Close Queue" : "Open Queue"}
-            </button>
-          </div>
+          <Card sx={{ mb: 3, boxShadow: 2 }}>
+            <CardContent>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                {queue.queue.name}
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                {queue.queue.location.name}
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: "grey.100", borderRadius: 2 }}>
+                    <Typography variant="caption" color="textSecondary">
+                      Now Serving
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+                      {queue.nowServing || "—"}
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: "grey.100", borderRadius: 2 }}>
+                    <Typography variant="caption" color="textSecondary">
+                      Waiting
+                    </Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 700, mt: 1 }}>
+                      {queue.waitingCount}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      people
+                    </Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <Paper elevation={0} sx={{ p: 2, bgcolor: "grey.100", borderRadius: 2 }}>
+                    <Typography variant="caption" color="textSecondary">
+                      Status
+                    </Typography>
+                    <Chip
+                      label={queue.queue.status}
+                      color={queue.queue.status === "OPEN" ? "success" : "default"}
+                      sx={{ mt: 1, fontWeight: 600 }}
+                    />
+                  </Paper>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+
+          <Card sx={{ boxShadow: 2 }}>
+            <CardContent>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={handleNext}
+                  fullWidth
+                >
+                  Call Next Token
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<SkipNextIcon />}
+                  onClick={handleSkip}
+                  fullWidth
+                >
+                  Skip Current Token
+                </Button>
+                <Button
+                  variant="contained"
+                  color={queue.queue.status === "OPEN" ? "error" : "success"}
+                  startIcon={<PowerSettingsNewIcon />}
+                  onClick={handleToggleStatus}
+                  fullWidth
+                >
+                  {queue.queue.status === "OPEN" ? "Close Queue" : "Open Queue"}
+                </Button>
+              </Stack>
+            </CardContent>
+          </Card>
         </>
       ) : null}
-    </div>
+    </Container>
   );
 }

@@ -73,3 +73,24 @@ export const enrollDoctor = async (req: Request, res: Response): Promise<void> =
     qrUrl,
   });
 };
+
+export const getAllDoctors = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const doctors = await prisma.doctor.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      doctors,
+    });
+  } catch (error) {
+    console.error('Error fetching doctors:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch doctors',
+    });
+  }
+};

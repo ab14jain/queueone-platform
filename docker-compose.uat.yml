@@ -1,0 +1,130 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uat-postgres
+    environment:
+      POSTGRES_DB: queueone_uat
+      POSTGRES_USER: queueone_uat
+      POSTGRES_PASSWORD: uat_secure_pass_2026
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_uat_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queueone_uat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - uat-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: uat-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_uat_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - uat-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uat-backend
+    ports:
+      - "4001:4000"
+    environment:
+      NODE_ENV: uat
+      DATABASE_URL: postgresql://queueone_uat:uat_secure_pass_2026@postgres:5432/queueone_uat
+      REDIS_URL: redis://redis:6379
+      PORT: 4000
+      CORS_ORIGINS: http://localhost:3002,http://localhost:3003,http://localhost:3004
+      LOG_LEVEL: debug
+      ENABLE_MOCK_DATA: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+    networks:
+      - uat-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: uat-frontend
+    ports:
+      - "3002:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4001
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4001
+      NODE_ENV: production
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    networks:
+      - uat-network
+    restart: unless-stopped
+
+  admin-panel:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+    container_name: uat-admin-panel
+    ports:
+      - "3003:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4001
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4001
+      NODE_ENV: production
+    depends_on:
+      - backend
+    volumes:
+      - ./admin-panel/src:/app/src
+      - ./admin-panel/public:/app/public
+    networks:
+      - uat-network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: uat-notification-service
+    ports:
+      - "5002:5001"
+    environment:
+      NODE_ENV: uat
+      PORT: 5001
+      LOG_LEVEL: debug
+    depends_on:
+      - backend
+    volumes:
+      - ./notification-service/src:/app/src
+    networks:
+      - uat-network
+    restart: unless-stopped
+
+volumes:
+  postgres_uat_data:
+  redis_uat_data:
+
+networks:
+  uat-network:
+    driver: bridge

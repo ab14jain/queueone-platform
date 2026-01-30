@@ -19,6 +19,12 @@ enum TokenStatus {
   SERVED
 }
 
+enum UserRole {
+  DOCTOR
+  STAFF
+  ADMIN
+}
+
 model Location {
   id        String   @id @default(uuid())
   name      String
@@ -34,9 +40,20 @@ model Doctor {
   name      String
   email     String?  @unique
   mobile    String?  @unique
+  password  String?
   createdAt DateTime @default(now())
 
   queues    Queue[]
+}
+
+model Staff {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(STAFF)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Queue {
